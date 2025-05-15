@@ -15,7 +15,7 @@ Full details and insights into the architecture and implementation are available
 
 ## Screenshot
 
-![Themeable Screenshot](Themeable/Resources/Screenshot.png)
+<img src="Themeable/Resources/Screenshot.png" width="400">
 
 ## Key Features
 
