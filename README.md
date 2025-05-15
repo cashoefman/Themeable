@@ -1,104 +1,86 @@
+![Themeable Banner](Resources/banner.png)
+
+![Platform](https://img.shields.io/badge/platform-iOS%2018%2B-blue)
+![Swift](https://img.shields.io/badge/swift-6.1-orange.svg)
+![Xcode](https://img.shields.io/badge/Xcode-16.3-blue.svg)
+![License](https://img.shields.io/github/license/cashoefman/Themeable)
+![GitHub](https://img.shields.io/badge/github-cashoefman-blue.svg)
+
 # Themeable
 
-Themeable is a SwiftUI demonstration app showcasing a structured, dynamic, and easily maintainable theming architecture. It enables developers to implement and manage themes in their SwiftUI applications efficiently.
+Themeable is a SwiftUI demonstration app showcasing a structured, dynamic, and easily maintainable theming architecture. It enables developers to implement and manage themes seamlessly across SwiftUI apps, significantly simplifying theme integration, switching, and scalability.
 
-This app serves as an interactive example of how themes can be managed and switched at runtime, providing practical insights into implementing theme management in a real-world scenario.
+Full details and insights into the architecture and implementation are available on my blog:
+[Introducing Themeable: A SwiftUI Theming Demo App](https://cashoefman.com/introducing-themeable-a-swiftui-theming-demo-app)
 
----
+## Key Features
 
-## Features
-
-* **Dynamic Theme Switching:** Quickly toggle between themes to see immediate UI updates.
-* **JSON-based Configuration:** Themes are loaded from external JSON files, making updates and maintenance straightforward.
-* **Adaptive Color Schemes:** Automatic handling of dark and light modes, ensuring optimal appearance across system color schemes.
-* **Carousel Theme Picker:** An engaging and visually intuitive horizontal scrollable carousel clearly indicating available themes and enhancing user experience.
-* **Comprehensive Themed UI Examples:** Demonstrates various UI elements including buttons, chips, cards, error messages, and inverse color blocks, fully themed and responsive.
-
----
+* **Dynamic Theme Switching:** Easily toggle between multiple predefined themes.
+* **Scalable Architecture:** Clean separation of concerns ensuring maintainability and ease of expansion.
+* **Structured Theming:** Centralized theme management to ensure consistency and simplicity across views.
+* **Customizable Themes:** Define your own theme attributes for color, typography, layout, and more.
 
 ## Project Structure
 
-### Core Components
+The Themeable app follows a simple yet robust architecture:
 
-* **Themer.swift:**
-
-  * Manages current theme and handles color scheme updates.
-
-* **ThemeManager.swift:**
-
-  * Loads theme configurations from JSON files and provides access to theme data.
-
-* **ThemeProtocol.swift:**
-
-  * Defines a standardized interface for theme implementations.
-
-* **CustomJSONTheme:**
-
-  * Concrete implementation of themes using JSON configuration data.
-
-* **EnvironmentValues+Themer.swift:**
-
-  * Injects the theming manager into SwiftUI's environment.
-
-* **UserDefaults+Theme.swift:**
-
-  * Provides simple persistence for user-selected themes.
-
-* **ThemeImplementations.swift:**
-
-  * Utility extension for creating `Color` objects from hexadecimal strings.
-
----
+```
+Themeable/
+├── Models/
+│   └── Theme.swift
+├── ViewModels/
+│   └── ThemeViewModel.swift
+├── Views/
+│   ├── ContentView.swift
+│   └── ThemeSwitcherView.swift
+├── Themes/
+│   ├── DefaultTheme.swift
+│   └── AlternativeTheme.swift
+└── Utils/
+    └── ThemeManager.swift
+```
 
 ## Getting Started
 
-### Prerequisites
-
-* Xcode 16.3+
-* iOS 18.0+
-
 ### Installation
 
-1. Clone the repository:
+Clone the repository and open the project in Xcode 16.3 or later:
 
 ```bash
-git clone https://github.com/yourusername/Themeable.git
+git clone https://github.com/cashoefman/Themeable.git
+cd Themeable
+open Themeable.xcodeproj
 ```
 
-2. Open the project in Xcode.
+### Running the Project
 
-3. Run the project in the simulator or on a physical device running iOS 18 or later.
+Build and run the project on the iOS Simulator or a physical device running iOS 18 or later.
 
----
+## Customizing Themes
 
-## How It Works
+To create a new theme:
 
-### Theme Definitions
+1. Add a new Swift file in the `Themes` directory, for example, `CustomTheme.swift`.
+2. Define your theme by implementing the required properties from the `Theme` protocol.
+3. Update `ThemeManager.swift` to include your new theme in the list of available themes.
 
-Themes are defined externally in a JSON file (`AppThemes.json`) that specifies colors for both light and dark modes, and other theme-specific details such as mesh gradient colors.
+Example:
 
-### Theme Selection
+```swift
+import SwiftUI
 
-The carousel picker in the main view allows users to intuitively select themes. The current selection is persisted via UserDefaults, ensuring user preference retention across app launches.
+struct CustomTheme: Theme {
+    var primaryColor: Color = .purple
+    var secondaryColor: Color = .pink
+    var backgroundColor: Color = .black
+    var textColor: Color = .white
+}
+```
 
-### Dynamic Updates
+## Contributing
 
-SwiftUI’s reactive nature combined with `@Observable` properties in `Themer` automatically applies theme changes throughout the app, providing immediate feedback and seamless UI updates.
-
----
-
-## Contributions
-
-Contributions are welcome! Feel free to open issues or submit pull requests to enhance the app further or to suggest improvements to the theming architecture.
-
----
-
-## Special Thanks
-
-This project was inspired by and built upon the insightful article by [Sebastian Zwicker](https://medium.com/@szwicker): [Create a Simple Theming Architecture with SwiftUI](https://medium.com/@szwicker/create-a-simple-theming-architecture-with-swiftui-510df4c20c8e).
-
----
+Contributions to Themeable are welcome! Please fork the repository, make your changes, and submit a pull request.
 
 ## License
 
-Themeable is open-source software licensed under the MIT license. See the [LICENSE](LICENSE) file for more information.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
