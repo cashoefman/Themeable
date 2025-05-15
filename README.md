@@ -1,4 +1,4 @@
-![Themeable Banner](Resources/banner.png)
+![Themeable Banner](Themeable/Resources/banner.png)
 
 ![Platform](https://img.shields.io/badge/platform-iOS%2018%2B-blue)
 ![Swift](https://img.shields.io/badge/swift-6.1-orange.svg)
