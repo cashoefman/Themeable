@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A1DCCAAF2DD6A25C00F97301 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = A1DCCAAE2DD6A25300F97301 /* README.md */; };
+		A1DCCAB12DD6A27700F97301 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = A1DCCAB02DD6A27000F97301 /* LICENSE */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		A127E7222DD64C6C00F57E14 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +32,8 @@
 		A127E7142DD64C6B00F57E14 /* Themeable.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Themeable.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A127E7212DD64C6C00F57E14 /* ThemeableTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ThemeableTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A127E72B2DD64C6C00F57E14 /* ThemeableUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ThemeableUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1DCCAAE2DD6A25300F97301 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		A1DCCAB02DD6A27000F97301 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,6 +82,8 @@
 		A127E70B2DD64C6B00F57E14 = {
 			isa = PBXGroup;
 			children = (
+				A1DCCAB02DD6A27000F97301 /* LICENSE */,
+				A1DCCAAE2DD6A25300F97301 /* README.md */,
 				A127E7162DD64C6B00F57E14 /* Themeable */,
 				A127E7242DD64C6C00F57E14 /* ThemeableTests */,
 				A127E72E2DD64C6C00F57E14 /* ThemeableUITests */,
@@ -212,6 +221,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1DCCAAF2DD6A25C00F97301 /* README.md in Resources */,
+				A1DCCAB12DD6A27700F97301 /* LICENSE in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

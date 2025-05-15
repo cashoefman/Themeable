@@ -1,0 +1,24 @@
+# Enforce consistent line endings
+* text=auto
+
+# Define Swift files explicitly
+*.swift linguist-language=Swift text eol=lf
+
+# Define Objective-C files explicitly
+*.m linguist-language=Objective-C text eol=lf
+*.h linguist-language=Objective-C text eol=lf
+
+# Xcode project and workspace files
+*.pbxproj text merge=union
+*.xcscheme text
+*.plist text merge=union
+
+# Ensure images are treated as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+
+# Ignore diffs in compiled files
+*.xcassets/* binary
