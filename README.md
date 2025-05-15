@@ -13,6 +13,10 @@ Themeable is a SwiftUI demonstration app showcasing a structured, dynamic, and e
 Full details and insights into the architecture and implementation are available on my blog:
 [Introducing Themeable: A SwiftUI Theming Demo App](https://cashoefman.com/introducing-themeable-a-swiftui-theming-demo-app)
 
+## Screenshot
+
+![Themeable Screenshot](Themeable/Resources/screenshot.png)
+
 ## Key Features
 
 * **Dynamic Theme Switching:** Easily toggle between multiple predefined themes.
@@ -26,18 +30,30 @@ The Themeable app follows a simple yet robust architecture:
 
 ```
 Themeable/
+├── Coordinators/
+│   └── AppCoordinator.swift
 ├── Models/
-│   └── Theme.swift
+│   ├── ThemeData.swift
+│   ├── ThemeID.swift
+│   └── ThemeProtocol.swift
 ├── ViewModels/
-│   └── ThemeViewModel.swift
+│   └── ThemeManager.swift
 ├── Views/
-│   ├── ContentView.swift
-│   └── ThemeSwitcherView.swift
+│   └── ContentView.swift
 ├── Themes/
-│   ├── DefaultTheme.swift
-│   └── AlternativeTheme.swift
-└── Utils/
-    └── ThemeManager.swift
+│   └── ThemeImplementations.swift
+├── Utils/
+│   ├── ColorSchemeTracker.swift
+│   ├── EnvironmentValues+Themer.swift
+│   ├── Themer.swift
+│   └── UserDefaults+Theme.swift
+├── SupportingFiles/
+│   └── ThemeableApp.swift
+├── ThemeableTests/
+│   └── ThemeableTests.swift
+└── ThemeableUITests/
+    ├── ThemeableUITests.swift
+    └── ThemeableUITestsLaunchTests.swift
 ```
 
 ## Getting Started
