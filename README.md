@@ -15,7 +15,7 @@ Full details and insights into the architecture and implementation are available
 
 ## Screenshot
 
-![Themeable Screenshot](https://github.com/cashoefman/Themeable/raw/main/Themeable/Resources/screenshot.png)
+![Themeable Screenshot](Themeable/Resources/Screenshot.png)
 
 ## Key Features
 
