@@ -1,0 +1,974 @@
+# Directory Structure and Files
+
+- `Themeable/Models/ThemeData.swift`
+- `Themeable/Models/ThemeID.swift`
+- `Themeable/Models/ThemeProtocol.swift`
+- `Themeable/Supporting Files/ThemeableApp.swift`
+- `Themeable/Themes/ThemeImplementations.swift`
+- `Themeable/Utils/ColorSchemeTracker.swift`
+- `Themeable/Utils/EnvironmentValues+Themer.swift`
+- `Themeable/Utils/Themer.swift`
+- `Themeable/Utils/UserDefaults+Theme.swift`
+- `Themeable/ViewModels/ThemeManager.swift`
+- `Themeable/Views/ContentView.swift`
+- `ThemeableTests/ThemeableTests.swift`
+- `ThemeableUITests/ThemeableUITests.swift`
+- `ThemeableUITests/ThemeableUITestsLaunchTests.swift`
+
+
+
+# ===== File: Themeable/ViewModels/ThemeManager.swift =====
+
+//
+//  ThemeManager.swift
+//  Themeable
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import Foundation
+
+// MARK: - ThemeManager
+/// Singleton class responsible for loading, storing, and providing access to all available themes in the app.
+class ThemeManager {
+    
+    /// Shared instance of ThemeManager, following the Singleton design pattern.
+    static let shared = ThemeManager()
+
+    /// Array holding all loaded theme data objects from the JSON configuration.
+    private(set) var allLoadedThemes: [CustomThemeData] = []
+    
+    /// Dictionary mapping theme identifiers to their corresponding theme data for quick access.
+    private var themesByIdentifier: [String: CustomThemeData] = [:]
+
+    /// Default theme identifier used for fallback when a specified theme isn't found.
+    let defaultThemeID: ThemeID = .m3Baseline
+
+    /// Private initializer ensures ThemeManager can only be instantiated internally, enforcing Singleton pattern.
+    private init() {
+        loadThemes()
+    }
+
+    /// Loads themes from a JSON file using the CustomThemeLoader class.
+    private func loadThemes() {
+        // Load and decode themes from the JSON resource file.
+        allLoadedThemes = CustomThemeLoader.loadThemes()
+        
+        // Populate themesByIdentifier dictionary for quick lookups.
+        for theme in allLoadedThemes {
+            themesByIdentifier[theme.id] = theme
+        }
+    }
+
+    /// Retrieves theme data based on a given theme identifier.
+    /// - Parameter id: The identifier for the desired theme.
+    /// - Returns: A `CustomThemeData` instance if found, otherwise `nil`.
+    func getThemeData(by id: String) -> CustomThemeData? {
+        return themesByIdentifier[id]
+    }
+
+    /// Provides a list of all available theme identifiers.
+    var allThemeIDs: [ThemeID] {
+        return allLoadedThemes.map { ThemeID(rawValue: $0.id) }
+    }
+}
+
+
+
+# ===== File: Themeable/Utils/Themer.swift =====
+
+//
+//  Themer.swift
+//  Themeable
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import SwiftUI
+import Combine
+
+// MARK: - Themer
+/// An observable object responsible for managing the current theme and responding to color scheme changes.
+/// It interacts closely with ThemeManager to retrieve theme details and persist user preferences.
+@Observable
+class Themer {
+    
+    /// The user's preferred theme identifier (ThemeID), persisted across sessions.
+    @ObservationIgnored private(set) var userPreferredThemeID: ThemeID
+    
+    /// The current color scheme (dark or light mode) in use by the app.
+    private(set) var colorScheme: ColorScheme = .light
+    
+    /// The active theme instance conforming to ThemeProtocol.
+    private(set) var theme: ThemeProtocol
+
+    /// A list of all available custom themes loaded from configuration.
+    var availableThemes: [CustomThemeData] {
+        ThemeManager.shared.allLoadedThemes
+    }
+
+    /// Initializes a new Themer instance, loading user preferences and setting initial theme state.
+    init() {
+        // Ensure ThemeManager singleton is initialized.
+        _ = ThemeManager.shared
+
+        // Load the user's previously saved theme ID from UserDefaults, fallback to default if unavailable.
+        let savedThemeIDString = UserDefaults.standard.themeIDString
+        self.userPreferredThemeID = ThemeID(rawValue: savedThemeIDString ?? ThemeManager.shared.defaultThemeID.rawValue)
+
+        // Ensure the saved theme ID is valid; if not, fallback to default.
+        if !ThemeManager.shared.allThemeIDs.contains(userPreferredThemeID) {
+            print("Warning: User's saved theme ID '\(userPreferredThemeID.rawValue)' not found. Resetting to default.")
+            self.userPreferredThemeID = ThemeManager.shared.defaultThemeID
+        }
+
+        // Set the initial theme based on the user's preferred ID and initial color scheme.
+        self.theme = self.userPreferredThemeID.theme(for: .light)
+    }
+
+    /// Updates the current theme with a new ThemeID, saving the user's preference and applying animations.
+    /// - Parameter newThemeID: The new theme identifier to apply.
+    func setTheme(with newThemeID: ThemeID) {
+        withAnimation {
+            self.userPreferredThemeID = newThemeID
+            self.theme = newThemeID.theme(for: self.colorScheme)
+            UserDefaults.standard.themeIDString = self.userPreferredThemeID.rawValue
+        }
+    }
+
+    /// Updates the active color scheme (light or dark) and applies the appropriate theme variation.
+    /// - Parameter newColorScheme: The new color scheme to apply.
+    func setColorScheme(_ newColorScheme: ColorScheme) {
+        if self.colorScheme != newColorScheme {
+            withAnimation {
+                self.colorScheme = newColorScheme
+                self.theme = userPreferredThemeID.theme(for: newColorScheme)
+            }
+        }
+    }
+}
+
+
+# ===== File: Themeable/Utils/UserDefaults+Theme.swift =====
+
+//
+//  UserDefaults+Theme.swift
+//  Themeable
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import Foundation
+
+// MARK: - UserDefaults Extension (Theme Persistence)
+/// Extends UserDefaults to conveniently save and retrieve the user's preferred theme identifier.
+/// Provides a simple and centralized mechanism for theme persistence across app sessions.
+extension UserDefaults {
+    
+    /// Key used to store and retrieve the theme ID from UserDefaults.
+    private static let themeIDKey = "userPreferredThemeID"
+
+    /// Computed property for accessing the user's preferred theme ID as a string.
+    var themeIDString: String? {
+        get {
+            // Retrieve the stored theme ID if available.
+            string(forKey: Self.themeIDKey)
+        }
+        set {
+            // Save the new theme ID to UserDefaults.
+            set(newValue, forKey: Self.themeIDKey)
+        }
+    }
+}
+
+
+# ===== File: Themeable/Utils/EnvironmentValues+Themer.swift =====
+
+///
+//  EnvironmentValues+Themer.swift
+//  Themeable
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import SwiftUI
+
+// MARK: - ThemerKey
+/// Custom environment key used to inject and access the Themer instance throughout the SwiftUI view hierarchy.
+private struct ThemerKey: EnvironmentKey {
+    /// Provides a default Themer instance for use when none has been explicitly set.
+    static var defaultValue: Themer = Themer()
+}
+
+// MARK: - EnvironmentValues Extension
+/// Extends SwiftUI's EnvironmentValues to include a theme management object (Themer).
+extension EnvironmentValues {
+    /// Provides a convenient accessor to get and set the Themer instance within the SwiftUI environment.
+    var themer: Themer {
+        get { self[ThemerKey.self] }
+        set { self[ThemerKey.self] = newValue }
+    }
+}
+
+
+# ===== File: Themeable/Utils/ColorSchemeTracker.swift =====
+
+//
+//  ColorSchemeTracker.swift
+//  Themeable
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import SwiftUI
+
+/// A helper view that tracks changes in the device's color scheme (light/dark mode)
+/// and propagates these changes via a binding to other parts of the app.
+struct ColorSchemeTracker: View {
+    
+    /// System-wide color scheme provided by SwiftUI environment (light or dark).
+    @Environment(\.colorScheme) private var systemColorScheme
+    
+    /// Binding to a local variable to propagate color scheme changes.
+    @Binding var currentLocalColorScheme: ColorScheme
+
+    var body: some View {
+        // Invisible view used only to track changes to the system color scheme.
+        Color.clear
+            .onAppear {
+                // Set the initial color scheme when the view appears.
+                currentLocalColorScheme = systemColorScheme
+            }
+            .onChange(of: systemColorScheme) { oldScheme, newScheme in
+                // Update the binding whenever the system color scheme changes.
+                currentLocalColorScheme = newScheme
+            }
+    }
+}
+
+
+# ===== File: Themeable/Models/ThemeData.swift =====
+
+//
+//  ThemeData.swift
+//  Themeable
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import SwiftUI
+import Foundation
+
+// MARK: - ColorHexes
+// Struct to define color hex strings for various UI elements within a theme.
+struct ColorHexes: Codable {
+    let primary: String
+    let onPrimary: String
+    let primaryContainer: String
+    let onPrimaryContainer: String
+    let secondary: String
+    let onSecondary: String
+    let secondaryContainer: String
+    let onSecondaryContainer: String
+    let tertiary: String
+    let onTertiary: String
+    let tertiaryContainer: String
+    let onTertiaryContainer: String
+    let error: String
+    let onError: String
+    let errorContainer: String
+    let onErrorContainer: String
+    let background: String
+    let onBackground: String
+    let surface: String
+    let onSurface: String
+    let surfaceVariant: String
+    let onSurfaceVariant: String
+    let outline: String
+    let outlineVariant: String
+    let scrim: String
+    let inverseSurface: String
+    let inverseOnSurface: String
+    let inversePrimary: String
+    let surfaceDim: String
+    let surfaceBright: String
+    let surfaceContainerLowest: String
+    let surfaceContainerLow: String
+    let surfaceContainer: String
+    let surfaceContainerHigh: String
+    let surfaceContainerHighest: String
+
+    let meshGradientColors: [String] // Colors used for creating mesh gradients
+}
+
+// MARK: - CustomThemeData
+// Represents a theme with specific identifiers, display names, and color configurations for light and dark modes.
+struct CustomThemeData: Codable, Identifiable {
+    let id: String
+    let displayName: String
+    let lightColors: ColorHexes
+    let darkColors: ColorHexes
+}
+
+// MARK: - CustomThemeLoader
+// Responsible for loading and decoding theme data from a JSON file.
+class CustomThemeLoader {
+    static func loadThemes() -> [CustomThemeData] {
+        guard let url = Bundle.main.url(forResource: "AppThemes", withExtension: "json") else {
+            print("❌ Error: AppThemes.json NOT FOUND in app bundle.")
+            return []
+        }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let decoder = JSONDecoder()
+            let themes = try decoder.decode([CustomThemeData].self, from: data)
+
+            return themes
+        } catch {
+            print("❌ Error loading themes: \(error.localizedDescription)")
+            return []
+        }
+    }
+}
+
+// MARK: - CustomJSONTheme
+// Implements the ThemeProtocol using the data loaded from JSON, providing SwiftUI colors for UI elements.
+struct CustomJSONTheme: ThemeProtocol {
+    private let themeId: String
+    private let colorSet: ColorHexes
+    private let currentColorScheme: ColorScheme
+
+    init(data: CustomThemeData, colorScheme: ColorScheme) {
+        self.themeId = data.id
+        self.colorSet = colorScheme == .dark ? data.darkColors : data.lightColors
+        self.currentColorScheme = colorScheme
+    }
+
+    // Theme colors for UI elements
+    var primary: Color { Color(hex: colorSet.primary) }
+    var onPrimary: Color { Color(hex: colorSet.onPrimary) }
+    var primaryContainer: Color { Color(hex: colorSet.primaryContainer) }
+    var onPrimaryContainer: Color { Color(hex: colorSet.onPrimaryContainer) }
+
+    var secondary: Color { Color(hex: colorSet.secondary) }
+    var onSecondary: Color { Color(hex: colorSet.onSecondary) }
+    var secondaryContainer: Color { Color(hex: colorSet.secondaryContainer) }
+    var onSecondaryContainer: Color { Color(hex: colorSet.onSecondaryContainer) }
+
+    var tertiary: Color { Color(hex: colorSet.tertiary) }
+    var onTertiary: Color { Color(hex: colorSet.onTertiary) }
+    var tertiaryContainer: Color { Color(hex: colorSet.tertiaryContainer) }
+    var onTertiaryContainer: Color { Color(hex: colorSet.onTertiaryContainer) }
+
+    var error: Color { Color(hex: colorSet.error) }
+    var onError: Color { Color(hex: colorSet.onError) }
+    var errorContainer: Color { Color(hex: colorSet.errorContainer) }
+    var onErrorContainer: Color { Color(hex: colorSet.onErrorContainer) }
+
+    var background: Color { Color(hex: colorSet.background) }
+    var onBackground: Color { Color(hex: colorSet.onBackground) }
+    var surface: Color { Color(hex: colorSet.surface) }
+    var onSurface: Color { Color(hex: colorSet.onSurface) }
+    var surfaceVariant: Color { Color(hex: colorSet.surfaceVariant) }
+    var onSurfaceVariant: Color { Color(hex: colorSet.onSurfaceVariant) }
+    var outline: Color { Color(hex: colorSet.outline) }
+    var outlineVariant: Color { Color(hex: colorSet.outlineVariant) }
+    var scrim: Color { Color(hex: colorSet.scrim) }
+    var inverseSurface: Color { Color(hex: colorSet.inverseSurface) }
+    var inverseOnSurface: Color { Color(hex: colorSet.inverseOnSurface) }
+    var inversePrimary: Color { Color(hex: colorSet.inversePrimary) }
+    var surfaceDim: Color { Color(hex: colorSet.surfaceDim) }
+    var surfaceBright: Color { Color(hex: colorSet.surfaceBright) }
+    var surfaceContainerLowest: Color { Color(hex: colorSet.surfaceContainerLowest) }
+    var surfaceContainerLow: Color { Color(hex: colorSet.surfaceContainerLow) }
+    var surfaceContainer: Color { Color(hex: colorSet.surfaceContainer) }
+    var surfaceContainerHigh: Color { Color(hex: colorSet.surfaceContainerHigh) }
+    var surfaceContainerHighest: Color { Color(hex: colorSet.surfaceContainerHighest) }
+
+    // Colors specifically for generating mesh gradients
+    var meshGradientColors: [Color] {
+        return colorSet.meshGradientColors.map { Color(hex: $0) }
+    }
+
+    // Mesh gradient configuration for onboarding backgrounds
+    var onboardingBackground: MeshGradient {
+        MeshGradient(width: 3, height: 3, points: [
+            .init(0, 0), .init(0.5, 0), .init(1, 0),
+            .init(0, 0.5), .init(0.5, 0.5), .init(1, 0.5),
+            .init(0, 1), .init(0.5, 1), .init(1, 1)
+        ], colors: Array(meshGradientColors.prefix(9)))
+    }
+
+    var navigationButtonBackground: Color { primaryContainer.opacity(0.2) }
+    var navigationTint: Color { primary }
+}
+
+
+# ===== File: Themeable/Models/ThemeID.swift =====
+
+//
+//  ThemeID.swift
+//  Themeable
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import SwiftUI
+
+// MARK: - ThemeID
+/// A unique identifier representing a specific theme.
+/// It acts as a key for retrieving theme details and color configurations.
+struct ThemeID: Identifiable, Equatable, Hashable, RawRepresentable {
+    
+    /// The underlying string identifier for the theme.
+    let rawValue: String
+    
+    /// Conformance to Identifiable; returns the raw string identifier.
+    var id: String { rawValue }
+
+    /// Initializes a ThemeID using a raw string value.
+    /// - Parameter rawValue: The unique string representing the theme ID.
+    init(rawValue: String) {
+        self.rawValue = rawValue
+    }
+    
+    /// Convenience initializer directly from a string.
+    /// - Parameter id: The unique string identifier for a theme.
+    init(_ id: String) {
+        self.rawValue = id
+    }
+    
+    /// Retrieves the concrete theme implementation (colors, etc.) for the given color scheme (light/dark).
+    /// - Parameter colorScheme: The desired color scheme.
+    /// - Returns: A theme conforming to ThemeProtocol.
+    func theme(for colorScheme: ColorScheme) -> ThemeProtocol {
+        // Attempt to get theme data using the ThemeManager.
+        if let themeData = ThemeManager.shared.getThemeData(by: self.rawValue) {
+            return CustomJSONTheme(data: themeData, colorScheme: colorScheme)
+        }
+        
+        // Logs error if theme data is unavailable, fallback to default theme.
+        print("Error: Theme data for ID '\(self.rawValue)' not found. Falling back to default baseline.")
+        let defaultThemeID = ThemeManager.shared.defaultThemeID
+        
+        if let fallbackData = ThemeManager.shared.getThemeData(by: defaultThemeID.rawValue) {
+            return CustomJSONTheme(data: fallbackData, colorScheme: colorScheme)
+        }
+        
+        // Fatal error if default theme configuration is also unavailable.
+        fatalError("FATAL ERROR: Default theme data not found. App cannot continue without a default theme configuration.")
+    }
+    
+    /// User-friendly display name for the theme.
+    var displayName: String {
+        ThemeManager.shared.getThemeData(by: self.rawValue)?.displayName ?? "Unknown Theme"
+    }
+    
+    /// Indicates if the theme supports adaptive changes between light/dark modes.
+    var isAdaptive: Bool {
+        true
+    }
+    
+    /// Default baseline theme identifier (Material 3 baseline).
+    static let m3Baseline = ThemeID("apptheme.m3.baseline")
+}
+
+
+# ===== File: Themeable/Models/ThemeProtocol.swift =====
+
+//
+//  ThemeProtocol.swift
+//  Themeable
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import SwiftUI
+
+// MARK: - ThemeProtocol
+/// Protocol defining a structured set of colors and properties required by any theme implementation.
+/// This ensures consistency and standardization across various themes within the application.
+protocol ThemeProtocol {
+    
+    // MARK: Primary Colors
+    /// Primary color used prominently in UI components (e.g., buttons, highlights).
+    var primary: Color { get }
+    /// Color displayed over the primary color for readability.
+    var onPrimary: Color { get }
+    /// Container background color related to the primary color, used for surfaces or backgrounds.
+    var primaryContainer: Color { get }
+    /// Foreground color used over the primary container.
+    var onPrimaryContainer: Color { get }
+
+    // MARK: Secondary Colors
+    /// Secondary color used for accentuating and complementing the primary color.
+    var secondary: Color { get }
+    /// Color displayed over the secondary color.
+    var onSecondary: Color { get }
+    /// Container background color related to the secondary color.
+    var secondaryContainer: Color { get }
+    /// Foreground color used over the secondary container.
+    var onSecondaryContainer: Color { get }
+
+    // MARK: Tertiary Colors
+    /// Tertiary accent color, providing additional color variety and depth.
+    var tertiary: Color { get }
+    /// Color displayed over the tertiary color.
+    var onTertiary: Color { get }
+    /// Container background color related to the tertiary color.
+    var tertiaryContainer: Color { get }
+    /// Foreground color used over the tertiary container.
+    var onTertiaryContainer: Color { get }
+
+    // MARK: Error Colors
+    /// Color used to indicate errors or alerts in the UI.
+    var error: Color { get }
+    /// Color displayed over the error color for readability.
+    var onError: Color { get }
+    /// Background container color used specifically for error messages or alerts.
+    var errorContainer: Color { get }
+    /// Foreground color used over the error container.
+    var onErrorContainer: Color { get }
+
+    // MARK: Neutral Colors
+    /// General app background color.
+    var background: Color { get }
+    /// Foreground text and elements color suitable for use on the background color.
+    var onBackground: Color { get }
+    /// Surface color for cards, sheets, and other elevated components.
+    var surface: Color { get }
+    /// Foreground color suitable for use on the surface color.
+    var onSurface: Color { get }
+    /// Variant of surface used to provide additional depth or distinction.
+    var surfaceVariant: Color { get }
+    /// Foreground color for use on the surface variant.
+    var onSurfaceVariant: Color { get }
+    /// Standard color used for outlines around UI elements.
+    var outline: Color { get }
+    /// Variant color used for outlines needing additional distinction.
+    var outlineVariant: Color { get }
+    /// Overlay color typically used for scrims or darkening overlays.
+    var scrim: Color { get }
+    /// Surface color used for inverse or contrasting areas of the UI.
+    var inverseSurface: Color { get }
+    /// Foreground color suitable for inverse surfaces.
+    var inverseOnSurface: Color { get }
+    /// Inverse primary color used for emphasizing inverted color schemes.
+    var inversePrimary: Color { get }
+    /// Surface color variant used to indicate a less emphasized state.
+    var surfaceDim: Color { get }
+    /// Bright surface variant for emphasizing certain UI areas.
+    var surfaceBright: Color { get }
+    /// Lowest emphasis surface container variant.
+    var surfaceContainerLowest: Color { get }
+    /// Low emphasis surface container variant.
+    var surfaceContainerLow: Color { get }
+    /// Standard surface container variant.
+    var surfaceContainer: Color { get }
+    /// High emphasis surface container variant.
+    var surfaceContainerHigh: Color { get }
+    /// Highest emphasis surface container variant.
+    var surfaceContainerHighest: Color { get }
+
+    // MARK: App-Specific Components
+    /// Colors specifically used for generating mesh gradients, typically for onboarding screens.
+    var meshGradientColors: [Color] { get }
+    /// Mesh gradient configuration, usually for background visuals on onboarding screens.
+    var onboardingBackground: MeshGradient { get }
+    /// Background color specifically used for navigation buttons.
+    var navigationButtonBackground: Color { get }
+    /// Tint color used for navigation elements.
+    var navigationTint: Color { get }
+}
+
+
+# ===== File: Themeable/Supporting Files/ThemeableApp.swift =====
+
+//
+//  ThemeableApp.swift
+//  Themeable
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import SwiftUI
+
+// MARK: - ThemeableApp
+/// Main entry point of the Themeable application. Responsible for setting up
+/// the environment and managing theme state at the app-wide level.
+@main
+struct ThemeableApp: App {
+    
+    /// Instance of the theme manager (Themer) that handles theme selection and color schemes.
+    @State private var themerInstance: Themer = Themer()
+    
+    /// Tracks the current system color scheme (dark or light mode).
+    @State private var currentSystemColorScheme: ColorScheme = .light
+
+    var body: some Scene {
+        WindowGroup {
+            // Root view of the app
+            ContentView()
+                .background {
+                    // Invisible helper view that tracks system color scheme changes
+                    ColorSchemeTracker(currentLocalColorScheme: $currentSystemColorScheme)
+                        .onChange(of: currentSystemColorScheme) { _, newScheme in
+                            // Updates theme colors when the system color scheme changes
+                            themerInstance.setColorScheme(newScheme)
+                        }
+                }
+                .onAppear {
+                    // Ensures the correct theme is applied upon app launch
+                    themerInstance.setColorScheme(currentSystemColorScheme)
+                }
+        }
+        // Injects the Themer instance into the SwiftUI environment, accessible by all views
+        .environment(themerInstance)
+    }
+}
+
+
+# ===== File: Themeable/Views/ContentView.swift =====
+
+//
+//  ContentView.swift
+//  Themeable
+//
+//  Created by Cas Hoefman on 5/15/25.
+//  Enhanced for demonstrating themed UI components.
+//
+
+import SwiftUI
+
+struct ContentView: View {
+    // Environment property providing access to the theme manager
+    @Environment(Themer.self) private var themer
+    // Tracks the current system color scheme (dark/light mode)
+    @Environment(\.colorScheme) private var systemColorScheme
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Spacer for initial padding to avoid overlap with navigation bar
+                    Spacer(minLength: 20)
+
+                    // Example text demonstrating primary surface theming
+                    Text("Hello Themed World!")
+                        .font(.largeTitle)
+                        .padding()
+                        .background(themer.theme.surface)
+                        .foregroundColor(themer.theme.onSurface)
+                        .cornerRadius(10)
+                        .shadow(radius: 5)
+
+                    // Demonstration of a mesh gradient area from the current theme
+                    Rectangle()
+                        .fill(themer.theme.onboardingBackground)
+                        .frame(height: 100)
+                        .cornerRadius(10)
+                        .overlay(
+                            Text("Mesh Gradient Area")
+                                .foregroundColor(themer.theme.onBackground)
+                        )
+
+                    // MARK: - Enhanced Theme Picker (Carousel with Partial Item Visibility)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(themer.availableThemes) { themeData in
+                                VStack {
+                                    Circle()
+                                        .fill(LinearGradient(
+                                            colors: themeData.lightColors.meshGradientColors.map { Color(hex: $0) },
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ))
+                                        .frame(width: 60, height: 60)
+                                        .shadow(radius: themer.userPreferredThemeID.rawValue == themeData.id ? 8 : 2)
+
+                                    Text(themeData.displayName)
+                                        .font(.caption)
+                                        .foregroundColor(themer.theme.onSurface)
+                                }
+                                .frame(width: 90) // Fixed width ensures partial visibility
+                                .padding(8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(themer.userPreferredThemeID.rawValue == themeData.id ?
+                                              themer.theme.primaryContainer :
+                                              themer.theme.surfaceContainer)
+                                )
+                                .onTapGesture {
+                                    withAnimation(.spring()) {
+                                        themer.setTheme(with: ThemeID(themeData.id))
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+
+                    // MARK: - Additional Themed UI Elements
+                    VStack(spacing: 20) {
+                        // Primary button demonstrating primary and onPrimary colors
+                        Button(action: {}) {
+                            Text("Primary Button")
+                                .foregroundColor(themer.theme.onPrimary)
+                                .padding()
+                                .background(themer.theme.primary)
+                                .cornerRadius(8)
+                        }
+
+                        // Secondary button demonstrating secondary color set
+                        Button(action: {}) {
+                            Text("Secondary Button")
+                                .foregroundColor(themer.theme.onSecondary)
+                                .padding()
+                                .background(themer.theme.secondary)
+                                .cornerRadius(8)
+                        }
+
+                        // Text button using primary color for minimal emphasis
+                        Button("Text Button") {}
+                            .foregroundColor(themer.theme.primary)
+
+                        // Chip/tag example demonstrating secondary container colors
+                        Text("Example Chip")
+                            .font(.caption)
+                            .padding(8)
+                            .background(themer.theme.secondaryContainer)
+                            .foregroundColor(themer.theme.onSecondaryContainer)
+                            .cornerRadius(12)
+
+                        // Error message example demonstrating error handling colors
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(themer.theme.onErrorContainer)
+                            Text("This is an error message.")
+                                .foregroundColor(themer.theme.onErrorContainer)
+                        }
+                        .padding()
+                        .background(themer.theme.errorContainer)
+                        .cornerRadius(8)
+
+                        // Outlined card demonstrating surface variant and outline colors
+                        VStack(alignment: .leading) {
+                            Text("Outlined Card")
+                                .font(.headline)
+                                .foregroundColor(themer.theme.onSurfaceVariant)
+                            Text("Subtitle or additional information.")
+                                .font(.subheadline)
+                                .foregroundColor(themer.theme.onSurfaceVariant.opacity(0.7))
+                        }
+                        .padding()
+                        .background(themer.theme.surfaceContainerLow)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(themer.theme.outlineVariant, lineWidth: 1)
+                        )
+
+                        // Inverse surface block example
+                        Text("Inverse Surface Example")
+                            .foregroundColor(themer.theme.inverseOnSurface)
+                            .padding()
+                            .background(themer.theme.inverseSurface)
+                            .cornerRadius(8)
+                    }
+                    .padding(.bottom, 30) // Padding at the bottom for visual spacing
+                }
+                .padding(.horizontal)
+                .frame(maxWidth: .infinity) // Ensures content uses full available width
+            }
+            .background(themer.theme.background) // Set background color from the theme
+            .navigationTitle("Color Scheme Demo")
+            .toolbarColorScheme(themer.colorScheme == .dark ? .dark : .light, for: .navigationBar)
+            .onChange(of: systemColorScheme) { _, newScheme in
+                // Respond to color scheme changes by updating the theme
+                themer.setColorScheme(newScheme)
+            }
+        }
+    }
+}
+
+#Preview {
+    ContentView()
+        .environment(Themer())
+}
+
+
+# ===== File: Themeable/Themes/ThemeImplementations.swift =====
+
+//
+//  ThemeImplementations.swift
+//  Themeable
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import SwiftUI
+
+// MARK: - Color Extension (Hex Initializer)
+/// Extends SwiftUI's Color struct to support creation from hexadecimal color strings.
+extension Color {
+    
+    /// Initializes a SwiftUI Color from a hexadecimal string representation.
+    ///
+    /// Supports:
+    /// - 3-digit hex (RGB)
+    /// - 6-digit hex (RRGGBB)
+    /// - 8-digit hex (AARRGGBB)
+    ///
+    /// - Parameter hex: The hex color string (e.g., \"#FFFFFF\", \"FFF\", \"FFFFFFFF\").
+    init(hex: String) {
+        // Remove any non-alphanumeric characters (like "#")
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        
+        let a, r, g, b: UInt64
+        
+        switch hex.count {
+        case 3: // RGB (12-bit, e.g., "FFF")
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit, e.g., "FFFFFF")
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit, e.g., "FFFFFFFF")
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            // Fallback to transparent color for invalid hex strings
+            (a, r, g, b) = (0, 0, 0, 0)
+        }
+        
+        // Initialize SwiftUI Color using calculated RGB and Alpha values
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
+}
+
+
+# ===== File: ThemeableUITests/ThemeableUITests.swift =====
+
+//
+//  ThemeableUITests.swift
+//  ThemeableUITests
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import XCTest
+
+final class ThemeableUITests: XCTestCase {
+
+    override func setUpWithError() throws {
+        // Put setup code here. This method is called before the invocation of each test method in the class.
+
+        // In UI tests it is usually best to stop immediately when a failure occurs.
+        continueAfterFailure = false
+
+        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
+    }
+
+    override func tearDownWithError() throws {
+        // Put teardown code here. This method is called after the invocation of each test method in the class.
+    }
+
+    @MainActor
+    func testExample() throws {
+        // UI tests must launch the application that they test.
+        let app = XCUIApplication()
+        app.launch()
+
+        // Use XCTAssert and related functions to verify your tests produce the correct results.
+    }
+
+    @MainActor
+    func testLaunchPerformance() throws {
+        // This measures how long it takes to launch your application.
+        measure(metrics: [XCTApplicationLaunchMetric()]) {
+            XCUIApplication().launch()
+        }
+    }
+}
+
+
+# ===== File: ThemeableUITests/ThemeableUITestsLaunchTests.swift =====
+
+//
+//  ThemeableUITestsLaunchTests.swift
+//  ThemeableUITests
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import XCTest
+
+final class ThemeableUITestsLaunchTests: XCTestCase {
+
+    override class var runsForEachTargetApplicationUIConfiguration: Bool {
+        true
+    }
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+    }
+
+    @MainActor
+    func testLaunch() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        // Insert steps here to perform after app launch but before taking a screenshot,
+        // such as logging into a test account or navigating somewhere in the app
+
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Launch Screen"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+}
+
+
+# ===== File: ThemeableTests/ThemeableTests.swift =====
+
+//
+//  ThemeableTests.swift
+//  ThemeableTests
+//
+//  Created by Cas Hoefman on 5/15/25.
+//
+
+import XCTest
+@testable import Themeable
+
+final class ThemeableTests: XCTestCase {
+
+    override func setUpWithError() throws {
+        // Put setup code here. This method is called before the invocation of each test method in the class.
+    }
+
+    override func tearDownWithError() throws {
+        // Put teardown code here. This method is called after the invocation of each test method in the class.
+    }
+
+    func testExample() throws {
+        // This is an example of a functional test case.
+        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        // Any test you write for XCTest can be annotated as throws and async.
+        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
+        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
+    }
+
+    func testPerformanceExample() throws {
+        // This is an example of a performance test case.
+        self.measure {
+            // Put the code you want to measure the time of here.
+        }
+    }
+
+}

@@ -15,7 +15,7 @@ Full details and insights into the architecture and implementation are available
 
 ## Screenshot
 
-<img src="Themeable/Resources/Screenshot.png" width="400">
+<img src="Themeable/Resources/ThemeableMoving.gif.png" width="350">
 
 ## Key Features
 
