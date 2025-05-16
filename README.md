@@ -8,30 +8,27 @@
 
 # Themeable
 
-Themeable is a SwiftUI demonstration app showcasing a structured, dynamic, and easily maintainable theming architecture. It enables developers to implement and manage themes seamlessly across SwiftUI apps, significantly simplifying theme integration, switching, and scalability.
+Themeable is a powerful yet straightforward SwiftUI demonstration app that showcases dynamic, scalable, and easily maintainable theming architectures. This app simplifies the integration, management, and switching of themes within SwiftUI applications, leveraging best practices for clean, maintainable code.
 
-Full details and insights into the architecture and implementation are available on my blog:
+Explore the detailed implementation on my blog:
 [Introducing Themeable: A SwiftUI Theming Demo App](https://cashoefman.com/introducing-themeable-a-swiftui-theming-demo-app)
+
+## Key Features
 
 ## Screenshot
 
 <img src="Themeable/Resources/ThemeableMoving.gif" width="350">
 
-## Key Features
-
-* **Dynamic Theme Switching:** Easily toggle between multiple predefined themes.
-* **Scalable Architecture:** Clean separation of concerns ensuring maintainability and ease of expansion.
-* **Structured Theming:** Centralized theme management to ensure consistency and simplicity across views.
-* **Customizable Themes:** Define your own theme attributes for color, typography, layout, and more.
+* **Dynamic Theme Switching:** Instantly switch between multiple predefined themes at runtime.
+* **Custom Themes:** Define, customize, and manage themes with ease through structured JSON configurations.
+* **Adaptive UI:** Themes automatically adapt to device color schemes (light and dark modes).
+* **Persistent User Preferences:** User-selected themes are persisted across sessions seamlessly.
+* **Structured Theming:** Clearly defined theme protocols and JSON-based theme definitions ensure scalability and consistency.
 
 ## Project Structure
 
-The Themeable app follows a simple yet robust architecture:
-
-```
+```plaintext
 Themeable/
-├── Coordinators/
-│   └── AppCoordinator.swift
 ├── Models/
 │   ├── ThemeData.swift
 │   ├── ThemeID.swift
@@ -49,6 +46,11 @@ Themeable/
 │   └── UserDefaults+Theme.swift
 ├── SupportingFiles/
 │   └── ThemeableApp.swift
+├── Assets.xcassets/
+│   ├── AccentColor.colorset
+│   └── AppIcon.appiconset
+├── Resources/
+│   └── AppThemes.json
 ├── ThemeableTests/
 │   └── ThemeableTests.swift
 └── ThemeableUITests/
@@ -60,7 +62,7 @@ Themeable/
 
 ### Installation
 
-Clone the repository and open the project in Xcode 16.3 or later:
+Clone the repository:
 
 ```bash
 git clone https://github.com/cashoefman/Themeable.git
@@ -70,33 +72,44 @@ open Themeable.xcodeproj
 
 ### Running the Project
 
-Build and run the project on the iOS Simulator or a physical device running iOS 18 or later.
+* Open the project in Xcode 16.3 or later.
+* Build and run on the iOS Simulator or a physical device running iOS 18 or later.
 
 ## Customizing Themes
 
-To create a new theme:
+Themes are defined and managed through JSON files (`AppThemes.json`). Each theme specifies color configurations for both light and dark modes, making it straightforward to add new themes or customize existing ones without changing the core app logic.
 
-1. Add a new Swift file in the `Themes` directory, for example, `CustomTheme.swift`.
-2. Define your theme by implementing the required properties from the `Theme` protocol.
-3. Update `ThemeManager.swift` to include your new theme in the list of available themes.
+Here's a brief example of a theme JSON configuration:
 
-Example:
-
-```swift
-import SwiftUI
-
-struct CustomTheme: Theme {
-    var primaryColor: Color = .purple
-    var secondaryColor: Color = .pink
-    var backgroundColor: Color = .black
-    var textColor: Color = .white
+```json
+{
+  "id": "custom.theme.id",
+  "displayName": "Custom Theme",
+  "lightColors": {
+    "primary": "#6750A4",
+    "onPrimary": "#FFFFFF",
+    "background": "#FFFBFF",
+    "onBackground": "#1C1B1F"
+  },
+  "darkColors": {
+    "primary": "#D0BCFF",
+    "onPrimary": "#381E72",
+    "background": "#1C1B1F",
+    "onBackground": "#E6E0E6"
+  }
 }
 ```
 
+## Usage Examples
+
+* **Switching Themes:** Easily select a new theme from the built-in carousel interface.
+* **Persistent Settings:** Theme choices are automatically saved, ensuring user preferences persist across sessions.
+* **Dynamic UI Adjustments:** UI elements like buttons, backgrounds, and text automatically reflect the chosen theme's color scheme.
+
 ## Contributing
 
-Contributions to Themeable are welcome! Please fork the repository, make your changes, and submit a pull request.
+Contributions to enhance Themeable are always welcome! Feel free to fork the repository, implement improvements or new features, and submit a pull request.
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+Themeable is licensed under the MIT License. See the `LICENSE` file for more details.
